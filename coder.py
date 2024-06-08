@@ -12,11 +12,14 @@ from typing import Annotated
 from typing import TypedDict
 from langgraph.graph.message import AnyMessage, add_messages
 
+from mistake_memory import MistakeMemory
+
 os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 
 set_debug(True)
 
 llm = OllamaFunctions(model="codellama", format="json", temperature=0)
+memory = MistakeMemory()
 
 combined_prompt = PromptTemplate.from_template((
             """You are a coding assistant. Ensure any code or test you provide can be executed with all required imports and variables \n
@@ -31,7 +34,7 @@ class test_code(BaseModel):
     prefix: str = Field(description="Description of the problem and approach")
     imports: str = Field(description="Code block import statements")
     code: str = Field(description="Code block not including import statements")
-    test: str = Field(description="Test code block not including import statements")
+    tests: str = Field(description="Test code block not including import statements")
     description = "Schema for code solutions to questions about LCEL."
 
 structured_llm = llm.with_structured_output(test_code)
@@ -109,7 +112,7 @@ def code_check(state: GraphState):
 
     # Get solution components
     imports = code_solution.imports
-    test = code_solution.test
+    tests = code_solution.tests
     code = code_solution.code
 
     # Check imports
@@ -128,7 +131,7 @@ def code_check(state: GraphState):
 
     # Check execution
     try:
-        combined_code = f"{imports}\n{code}\n{test}"
+        combined_code = f"{imports}\n{code}\n{tests}"
         # Use a shared scope for exec
         global_scope = {}
         exec(combined_code, global_scope)
