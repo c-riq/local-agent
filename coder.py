@@ -19,12 +19,13 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'true'
 set_debug(True)
 
 llm = OllamaFunctions(model="codellama", format="json", temperature=0)
-memory = MistakeMemory()
+mistakeMemory = MistakeMemory()
 
 combined_prompt = PromptTemplate.from_template((
             """You are a coding assistant. Ensure any code or test you provide can be executed with all required imports and variables \n
             defined. Structure your answer: 1) a prefix describing the code solution, 2) the imports, 3) the tests to check corectness of your solution and invocation of these tests, 4) the functioning code block.
-            \n Human: {question}
+            Adhere to these pieces of advice based on commonly occuring errors: {advice}
+            Human: {question}
             AI: """))
 
 # Data model
@@ -80,11 +81,12 @@ def generate(state: GraphState):
     state["error"]
 
     # Solution
-    code_solution = code_gen_chain.invoke(messages)
+    code_solution = code_gen_chain.invoke({"question": question, "advice": mistakeMemory.get_top_n_advice(3)})
+
     messages += [
         (
             "assistant",
-            f"Here is my attempt to solve the problem: {code_solution.prefix} \n Imports: {code_solution.imports} \n Test: {code_solution.test} \n Code: {code_solution.code}",
+            f"Here is my attempt to solve the problem: {code_solution.prefix} \n Imports: {code_solution.imports} \n Test: {code_solution.tests} \n Code: {code_solution.code}",
         )
     ]
 
@@ -137,6 +139,7 @@ def code_check(state: GraphState):
         exec(combined_code, global_scope)
     except Exception as e:
         print("---CODE BLOCK CHECK: FAILED---")
+        mistakeMemory.remember_mistake(e)
         error_message = [("user", f"Your solution failed the code execution test or unit test: {e}) Reflect on this error and your prior attempt to solve the problem. (1) State what you think went wrong with the prior solution and (2) try to solve this problem again. Return the FULL SOLUTION. Use the code tool to structure the output with a prefix, imports, test and code block:")]
         messages += error_message
         return {
@@ -211,8 +214,8 @@ builder.add_conditional_edges(
     },
 )
 
-memory = SqliteSaver.from_conn_string(":memory:")
-graph = builder.compile(checkpointer=memory)
+stateMemory = SqliteSaver.from_conn_string(":memory:")
+graph = builder.compile(checkpointer=stateMemory)
 
 # Util functions
 def run_graph(question):
@@ -233,11 +236,10 @@ config = {
     }
 }
 
-question = "Write a Python program that prints 'Hello, World!' to the console."
-events = graph.stream(
-    {"messages": [("user", question)], "iterations": 0}, config, stream_mode="values"
-)
-for event in events:
-    _print_event(event, _printed)
-
-event['generation']
+if __name__ == "__main__":
+    question = "Write a Python program that prints 'Hello, World!' to the console."
+    events = graph.stream(
+        {"messages": [("user", question)], "iterations": 0}, config, stream_mode="values"
+    )
+    for event in events:
+        _print_event(event, _printed)
