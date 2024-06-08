@@ -3,6 +3,11 @@ import importlib
 import pydoc
 import sys
 from loguru import logger
+from rich import inspect
+from rich.console import Console
+from io import StringIO
+
+console = Console()
 
 def get_package_version(package_name):
     logger.info(f"Checking version of package '{package_name}'")
@@ -46,7 +51,16 @@ def dynamic_import(package_name, method_path):
         logger.error(f"Error: Could not import method '{method_path}' from package '{package_name}'. {e}")
         return None
 
-def inspect_method(package_name, method_path, init_args=None, class_instance=None, check_update=False):
+def gather_additional_info(obj):
+    # Capture rich.inspect output
+    with console.capture() as capture:
+        inspect(obj, methods=True, docs=True, all=True)
+    additional_info = capture.get()
+    
+    logger.info(f"Gathered additional info: {additional_info}")
+    return additional_info
+
+def inspect_method(package_name, method_path, init_args=None, class_instance=None, check_update=False, combined_docs=False):
     current_version = get_package_version(package_name)
     
     if not current_version:
@@ -89,8 +103,17 @@ def inspect_method(package_name, method_path, init_args=None, class_instance=Non
         return
 
     # Use pydoc to get the documentation
-    docs = pydoc.render_doc(method, "Help on %s")
-    return docs
+    pydoc_docs = pydoc.render_doc(method, "Help on %s")
+
+    if combined_docs:
+        additional_info = gather_additional_info(method)
+        if additional_info.strip():
+            combined_docs_output = f"{pydoc_docs}\n{'-'*80}\n{additional_info}"
+            return combined_docs_output
+        else:
+            return pydoc_docs
+
+    return pydoc_docs
 
 # Example usage with logging
 from openai import OpenAI
@@ -101,9 +124,9 @@ client = OpenAI(
 )
 
 # Inspect the specific method on the instance
-docs = inspect_method('openai', 'chat.completions.create', class_instance=client, check_update=False)
+docs = inspect_method('openai', 'chat.completions.create', class_instance=client, check_update=False, combined_docs=True)
 print(docs)
 
 # Another example for a different package
-docs = inspect_method('requests', 'requests.get', check_update=False)
+docs = inspect_method('requests', 'requests.get', check_update=False, combined_docs=True)
 print(docs)
