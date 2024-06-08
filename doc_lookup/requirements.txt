@@ -1,4 +1,0 @@
-openai
-rich
-instructor
-loguru
