@@ -59,7 +59,7 @@ class GraphState(TypedDict):
 
 
 ### Parameters
-max_iterations = 3
+max_iterations = 5
 
 ### Nodes
 def generate(state: GraphState):
@@ -81,7 +81,7 @@ def generate(state: GraphState):
     state["error"]
 
     # Solution
-    code_solution = code_gen_chain.invoke({"question": question, "advice": mistakeMemory.get_top_n_advice(3)})
+    code_solution = code_gen_chain.invoke({"question": messages, "advice": mistakeMemory.get_top_n_advice(3)})
 
     messages += [
         (
