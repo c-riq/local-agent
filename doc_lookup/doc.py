@@ -6,6 +6,7 @@ from loguru import logger
 from rich import inspect
 from rich.console import Console
 from io import StringIO
+import re
 
 console = Console()
 
@@ -20,6 +21,30 @@ def get_package_version(package_name):
             logger.info(f"Found version: {line.split()[-1]}")
             return line.split()[-1]
     return None
+
+def extract_package_names(import_statements):
+    lines = import_statements.strip().split('\n')
+    package_names = []
+
+    import_re = re.compile(r'^\s*import\s+([a-zA-Z0-9_]+)')
+    import_as_re = re.compile(r'^\s*import\s+([a-zA-Z0-9_]+)\s+as\s+([a-zA-Z0-9_]+)')
+    from_import_re = re.compile(r'^\s*from\s+([a-zA-Z0-9_]+)\s+import\s+([a-zA-Z0-9_,\s]+)')
+
+    for line in lines:
+        match = import_re.match(line) or import_as_re.match(line) or from_import_re.match(line)
+        if match:
+            package_name = match.group(1)
+            package_names.append(package_name)
+
+    return package_names
+
+def analyze_package_versions(import_statements):
+    package_names = extract_package_names(import_statements['generation'].imports)
+    for package_name in package_names:
+        version = get_package_version(package_name)
+        if version:
+            print(f"Package '{package_name}' version: {version}")
+
 
 def get_latest_version(package_name):
     logger.info(f"Checking if there's a newer version available for package '{package_name}'")
