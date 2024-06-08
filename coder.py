@@ -211,6 +211,16 @@ builder.add_conditional_edges(
 memory = SqliteSaver.from_conn_string(":memory:")
 graph = builder.compile(checkpointer=memory)
 
+# Util functions
+def run_graph(question):
+    thread_id = str(uuid.uuid4())
+    config = {"configurable": {"thread_id": thread_id}}
+    _printed = set()
+    events = graph.stream({"messages": [("user", question)], "iterations": 0}, config, stream_mode="values")
+    for event in events:
+        _print_event(event, _printed)
+    return event['generation']
+
 _printed = set()
 thread_id = str(uuid.uuid4())
 config = {
