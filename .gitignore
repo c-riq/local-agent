@@ -1,3 +1,4 @@
 doc-helper/.cache
 .ipynb_checkpoints/*
 __pycache__/*
+common_mistakes.json
