@@ -18,10 +18,10 @@ set_debug(True)
 
 llm = OllamaFunctions(model="codellama", format="json", temperature=0)
 
-code_gen_prompt = PromptTemplate.from_template((
-            """You are a coding assistant. Ensure any code you provide can be executed with all required imports and variables \n
-            defined. Structure your answer: 1) a prefix describing the code solution, 2) the imports, 3) the functioning code block.
-            \n Human: {question}. Include the following test code below the implementation: {tests}
+combined_prompt = PromptTemplate.from_template((
+            """You are a coding assistant. Ensure any code or test you provide can be executed with all required imports and variables \n
+            defined. Structure your answer: 1) a prefix describing the code solution, 2) the imports, 3) the tests to check corectness of your solution and invocation of these tests, 4) the functioning code block.
+            \n Human: {question}
             AI: """))
 
 # Data model
@@ -31,10 +31,11 @@ class test_code(BaseModel):
     prefix: str = Field(description="Description of the problem and approach")
     imports: str = Field(description="Code block import statements")
     code: str = Field(description="Code block not including import statements")
+    test: str = Field(description="Test code block not including import statements")
     description = "Schema for code solutions to questions about LCEL."
 
 structured_llm = llm.with_structured_output(test_code)
-code_gen_chain = code_gen_prompt | structured_llm
+code_gen_chain = combined_prompt | structured_llm
 
 class GraphState(TypedDict):
     """
