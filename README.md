@@ -1,6 +1,3 @@
 # local-agent
 
-## ToDo
-- [ ] Danyla research agent frameworks
-- [ ] Muhtasham try to use inspect to get the source code and docstrings of the functions
-- [ ] Rick local file search
+Alphacodium style local agent, with support for local documentation fetching and active memory of mistakes.
